@@ -1,37 +1,43 @@
 const Product = require('../models/Product');
 
 exports.getProducts = async (req, res) => {
-  try {
-    const products = await Product.find();
-    res.json(products);
-  } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
+    try {
+        const products = await Product.find();
+        // 🆕 Qoldiqni hisoblab qo'shish
+        const productsWithStock = products.map(p => ({
+            ...p._doc,
+            stock: p.arrived - p.sold,
+            stockStatus: (p.arrived - p.sold) < 10 ? 'kam' : 'yetarli'
+        }));
+        res.json(productsWithStock);
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
 };
 
 exports.addProduct = async (req, res) => {
-  try {
-    const { name, arrived, price } = req.body;
-    const product = new Product({ name, arrived, sold: 0, price });
-    await product.save();
-    res.status(201).json(product);
-  } catch (error) {
-    res.status(400).json({ message: error.message });
-  }
+    try {
+        const { name, arrived, price } = req.body;
+        const product = new Product({ name, arrived, sold: 0, price });
+        await product.save();
+        res.status(201).json(product);
+    } catch (error) {
+        res.status(400).json({ message: error.message });
+    }
 };
 
 exports.updateProduct = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { name, arrived, price } = req.body;
-    const product = await Product.findById(id);
-    if (!product) return res.status(404).json({ message: 'Product not found' });
-    if (name) product.name = name;
-    if (arrived !== undefined) product.arrived = arrived;
-    if (price) product.price = price;
-    await product.save();
-    res.json(product);
-  } catch (error) {
-    res.status(400).json({ message: error.message });
-  }
+    try {
+        const { id } = req.params;
+        const { name, arrived, price } = req.body;
+        const product = await Product.findById(id);
+        if (!product) return res.status(404).json({ message: 'Product not found' });
+        if (name) product.name = name;
+        if (arrived !== undefined) product.arrived = arrived;
+        if (price) product.price = price;
+        await product.save();
+        res.json(product);
+    } catch (error) {
+        res.status(400).json({ message: error.message });
+    }
 };
