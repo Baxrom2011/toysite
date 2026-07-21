@@ -1,18 +1,9 @@
-const mongoose = require('mongoose');
+const express = require('express');
+const router = express.Router();
+const { getCustomers, addCustomer, deleteCustomer } = require('../controllers/customerController');
 
-const customerSchema = new mongoose.Schema({
-    name: { 
-        type: String, 
-        required: true 
-    },
-    phone: { 
-        type: String, 
-        default: '' 
-    },
-    address: { 
-        type: String, 
-        default: '' 
-    },
-}, { timestamps: true });
+router.get('/', getCustomers);
+router.post('/', addCustomer);
+router.delete('/:id', deleteCustomer);
 
-module.exports = mongoose.model('Customer', customerSchema);
+module.exports = router;
