@@ -1,0 +1,870 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>🧸 TOYS STORE MANAGEMENT</title>
+    <!-- Bootstrap 5 -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet" />
+    <!-- Font Awesome 6 -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" />
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --primary: #2563EB;
+            --success: #22C55E;
+            --danger: #EF4444;
+            --bg-light: #f8fafc;
+        }
+        body {
+            background: var(--bg-light);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        .sidebar {
+            min-height: 100vh;
+            background: white;
+            box-shadow: 2px 0 10px rgba(0,0,0,0.05);
+            padding-top: 20px;
+        }
+        .sidebar .nav-link {
+            color: #334155;
+            border-radius: 12px;
+            margin: 4px 12px;
+            padding: 12px 16px;
+            transition: all 0.2s;
+        }
+        .sidebar .nav-link:hover {
+            background: var(--primary);
+            color: white;
+        }
+        .sidebar .nav-link i {
+            width: 24px;
+            margin-right: 10px;
+        }
+        .sidebar .nav-link.active {
+            background: var(--primary);
+            color: white;
+        }
+        .main-content {
+            padding: 24px;
+        }
+        .card-stats {
+            border: none;
+            border-radius: 20px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.04);
+            transition: 0.2s;
+        }
+        .card-stats:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 8px 24px rgba(0,0,0,0.08);
+        }
+        .stat-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+        }
+        .stat-value {
+            font-size: 1.8rem;
+            font-weight: 700;
+        }
+        .btn-primary-custom {
+            background: var(--primary);
+            border: none;
+            border-radius: 12px;
+            padding: 10px 24px;
+            color: white;
+            font-weight: 600;
+        }
+        .btn-primary-custom:hover {
+            background: #1d4ed8;
+            color: white;
+        }
+        .btn-success-custom {
+            background: var(--success);
+            border: none;
+            border-radius: 12px;
+            padding: 10px 24px;
+            color: white;
+            font-weight: 600;
+        }
+        .btn-success-custom:hover {
+            background: #16a34a;
+            color: white;
+        }
+        .btn-danger-custom {
+            background: var(--danger);
+            border: none;
+            border-radius: 12px;
+            padding: 10px 24px;
+            color: white;
+            font-weight: 600;
+        }
+        .btn-danger-custom:hover {
+            background: #dc2626;
+            color: white;
+        }
+        .table-custom th {
+            background: #f1f5f9;
+            border-radius: 12px;
+        }
+        .table-custom td, .table-custom th {
+            vertical-align: middle;
+        }
+        .search-box {
+            border-radius: 40px;
+            border: 1px solid #e2e8f0;
+            padding: 10px 20px;
+            width: 100%;
+            max-width: 300px;
+        }
+        .search-box:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(37,99,235,0.2);
+        }
+        .badge-primary {
+            background: var(--primary);
+            color: white;
+        }
+        .badge-success {
+            background: var(--success);
+            color: white;
+        }
+        .badge-danger {
+            background: var(--danger);
+            color: white;
+        }
+        .tab-pane {
+            animation: fadeIn 0.3s ease;
+        }
+        @keyframes fadeIn {
+            0% { opacity: 0; transform: translateY(8px); }
+            100% { opacity: 1; transform: translateY(0); }
+        }
+        @media (max-width: 768px) {
+            .sidebar {
+                min-height: auto;
+                box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+            }
+            .main-content {
+                padding: 16px;
+            }
+            .stat-value {
+                font-size: 1.4rem;
+            }
+        }
+        .cash-card {
+            background: linear-gradient(145deg, #ffffff, #f1f5f9);
+            border-radius: 24px;
+            padding: 24px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.04);
+        }
+        .cash-amount {
+            font-size: 2.8rem;
+            font-weight: 700;
+            color: var(--primary);
+        }
+        .chart-container {
+            background: white;
+            border-radius: 20px;
+            padding: 16px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.04);
+        }
+    </style>
+</head>
+<body>
+    <div class="container-fluid">
+        <div class="row">
+            <!-- Sidebar -->
+            <nav class="col-md-3 col-lg-2 d-md-block sidebar position-sticky top-0 start-0 p-0">
+                <div class="p-3">
+                    <h4 class="fw-bold text-primary"><i class="fas fa-store me-2"></i>TOYS</h4>
+                    <hr />
+                </div>
+                <ul class="nav flex-column">
+                    <li class="nav-item">
+                        <a class="nav-link active" data-tab="dashboard" href="#"><i class="fas fa-chart-pie"></i> Dashboard</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" data-tab="warehouse" href="#"><i class="fas fa-warehouse"></i> Ombor</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" data-tab="add-sale" href="#"><i class="fas fa-cart-plus"></i> Sotuv qo'shish</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" data-tab="sales-history" href="#"><i class="fas fa-history"></i> Sotuv tarixi</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" data-tab="cash" href="#"><i class="fas fa-money-bill-wave"></i> Kassa</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" data-tab="reports" href="#"><i class="fas fa-file-alt"></i> Hisobot</a>
+                    </li>
+                </ul>
+            </nav>
+
+            <!-- Asosiy kontent -->
+            <main class="col-md-9 col-lg-10 main-content">
+                <!-- Dashboard -->
+                <div id="dashboard" class="tab-pane active">
+                    <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap">
+                        <h2 class="fw-bold"><i class="fas fa-chart-pie text-primary me-2"></i>Dashboard</h2>
+                        <div>
+                            <button class="btn btn-primary-custom me-2" onclick="openTab('add-sale')"><i class="fas fa-plus me-1"></i>Sotuv qo'shish</button>
+                            <button class="btn btn-success-custom" onclick="openTab('warehouse')"><i class="fas fa-plus me-1"></i>Tovar qo'shish</button>
+                        </div>
+                    </div>
+
+                    <div class="row g-4">
+                        <div class="col-md-3 col-sm-6">
+                            <div class="card card-stats p-3">
+                                <div class="d-flex align-items-center">
+                                    <div class="stat-icon bg-primary bg-opacity-10 text-primary me-3"><i class="fas fa-wallet"></i></div>
+                                    <div>
+                                        <div class="text-muted small">Bugungi savdo</div>
+                                        <div class="stat-value" id="todaySales">0</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3 col-sm-6">
+                            <div class="card card-stats p-3">
+                                <div class="d-flex align-items-center">
+                                    <div class="stat-icon bg-success bg-opacity-10 text-success me-3"><i class="fas fa-boxes"></i></div>
+                                    <div>
+                                        <div class="text-muted small">Ombordagi tovar</div>
+                                        <div class="stat-value" id="totalStock">0</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3 col-sm-6">
+                            <div class="card card-stats p-3">
+                                <div class="d-flex align-items-center">
+                                    <div class="stat-icon bg-warning bg-opacity-10 text-warning me-3"><i class="fas fa-coins"></i></div>
+                                    <div>
+                                        <div class="text-muted small">Kassa</div>
+                                        <div class="stat-value" id="cashBalance">0</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3 col-sm-6">
+                            <div class="card card-stats p-3">
+                                <div class="d-flex align-items-center">
+                                    <div class="stat-icon bg-danger bg-opacity-10 text-danger me-3"><i class="fas fa-chart-line"></i></div>
+                                    <div>
+                                        <div class="text-muted small">Oylik foyda</div>
+                                        <div class="stat-value" id="monthlyProfit">0</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mt-5">
+                        <h5 class="fw-semibold"><i class="fas fa-warehouse text-primary me-2"></i>Ombor holati</h5>
+                        <div class="table-responsive">
+                            <table class="table table-custom align-middle">
+                                <thead>
+                                    <tr>
+                                        <th>Mahsulot</th>
+                                        <th>Kelgan</th>
+                                        <th>Sotilgan</th>
+                                        <th>Qoldiq</th>
+                                        <th>Narxi</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="dashboardProductTable">
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Ombor -->
+                <div id="warehouse" class="tab-pane" style="display:none;">
+                    <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap">
+                        <h2 class="fw-bold"><i class="fas fa-warehouse text-primary me-2"></i>Ombor</h2>
+                        <div>
+                            <input type="text" class="search-box" id="productSearch" placeholder="Qidiruv..." oninput="filterProducts()" />
+                            <button class="btn btn-success-custom ms-2" onclick="addProduct()"><i class="fas fa-plus me-1"></i>Tovar qo'shish</button>
+                        </div>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table table-custom align-middle" id="warehouseTable">
+                            <thead>
+                                <tr>
+                                    <th>Mahsulot</th>
+                                    <th>Kelgan</th>
+                                    <th>Sotilgan</th>
+                                    <th>Qoldiq</th>
+                                    <th>Narxi</th>
+                                    <th>Harakat</th>
+                                </tr>
+                            </thead>
+                            <tbody id="warehouseBody">
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Sotuv qo'shish -->
+                <div id="add-sale" class="tab-pane" style="display:none;">
+                    <h2 class="fw-bold"><i class="fas fa-cart-plus text-primary me-2"></i>Sotuv qo'shish</h2>
+                    <div class="row mt-4">
+                        <div class="col-md-6">
+                            <div class="card p-4 border-0 shadow-sm rounded-4">
+                                <form id="saleForm" onsubmit="addSale(event)">
+                                    <div class="mb-3">
+                                        <label class="form-label fw-semibold">Mahsulot</label>
+                                        <select class="form-select" id="productSelect" required>
+                                        </select>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label fw-semibold">Soni</label>
+                                        <input type="number" class="form-control" id="saleQuantity" min="1" required />
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label fw-semibold">Narxi (so'm)</label>
+                                        <input type="number" class="form-control" id="salePrice" required />
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label fw-semibold">Xaridor (kim oldi)</label>
+                                        <input type="text" class="form-control" id="saleBuyer" placeholder="Ismi yoki kompaniya" />
+                                    </div>
+                                    <button type="submit" class="btn btn-primary-custom w-100"><i class="fas fa-save me-2"></i>SAQLASH</button>
+                                </form>
+                                <div id="saleMessage" class="mt-3"></div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="card p-4 border-0 shadow-sm rounded-4 bg-light">
+                                <h6><i class="fas fa-info-circle text-primary me-2"></i>Saqlansa avtomatik:</h6>
+                                <ul class="list-unstyled">
+                                    <li><i class="fas fa-check-circle text-success me-2"></i>Ombordan ayiradi</li>
+                                    <li><i class="fas fa-check-circle text-success me-2"></i>Kassaga qo'shadi</li>
+                                    <li><i class="fas fa-check-circle text-success me-2"></i>Tarixga yozadi</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Sotuv tarixi -->
+                <div id="sales-history" class="tab-pane" style="display:none;">
+                    <h2 class="fw-bold"><i class="fas fa-history text-primary me-2"></i>Sotuv tarixi</h2>
+                    <div class="table-responsive mt-4">
+                        <table class="table table-custom align-middle">
+                            <thead>
+                                <tr>
+                                    <th>Sana</th>
+                                    <th>Mahsulot</th>
+                                    <th>Soni</th>
+                                    <th>Summa</th>
+                                    <th>Xaridor</th>
+                                </tr>
+                            </thead>
+                            <tbody id="salesHistoryBody">
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Kassa -->
+                <div id="cash" class="tab-pane" style="display:none;">
+                    <h2 class="fw-bold"><i class="fas fa-money-bill-wave text-primary me-2"></i>Kassa</h2>
+                    <div class="row mt-4">
+                        <div class="col-md-4">
+                            <div class="cash-card">
+                                <div class="text-muted small">Bugungi kassa</div>
+                                <div class="cash-amount" id="cashDisplay">0</div>
+                                <div class="mt-3">
+                                    <button class="btn btn-success-custom me-2" onclick="addCashEntry('kirim')"><i class="fas fa-plus me-1"></i>Kirim</button>
+                                    <button class="btn btn-danger-custom" onclick="addCashEntry('chiqim')"><i class="fas fa-minus me-1"></i>Chiqim</button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-8">
+                            <div class="card p-3 border-0 shadow-sm rounded-4">
+                                <h6><i class="fas fa-list-ul text-primary me-2"></i>Tarix</h6>
+                                <div class="table-responsive">
+                                    <table class="table table-custom align-middle">
+                                        <thead>
+                                            <tr>
+                                                <th>Sana</th>
+                                                <th>Tur</th>
+                                                <th>Summa</th>
+                                                <th>Izoh</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="cashHistoryBody">
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Hisobot -->
+                <div id="reports" class="tab-pane" style="display:none;">
+                    <h2 class="fw-bold"><i class="fas fa-file-alt text-primary me-2"></i>Hisobot</h2>
+                    <div class="row mt-4 g-4">
+                        <div class="col-md-6">
+                            <div class="chart-container">
+                                <h6><i class="fas fa-calendar-day me-2 text-primary"></i>Kunlik savdo</h6>
+                                <canvas id="dailyChart" height="200"></canvas>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="chart-container">
+                                <h6><i class="fas fa-calendar-alt me-2 text-primary"></i>Oylik savdo</h6>
+                                <canvas id="monthlyChart" height="200"></canvas>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="chart-container">
+                                <h6><i class="fas fa-trophy me-2 text-success"></i>Eng ko'p sotilgan</h6>
+                                <canvas id="topProductsChart" height="200"></canvas>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="chart-container">
+                                <h6><i class="fas fa-exclamation-triangle me-2 text-danger"></i>Omborda kam qolgan</h6>
+                                <ul id="lowStockList" class="list-group list-group-flush mt-2">
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <script>
+        // ==========================================================
+        //  API BASE URL (backend ishlayotgan bo'lishi kerak)
+        // ==========================================================
+        const API_URL = 'http://localhost:5000/api';
+
+        // ==========================================================
+        //  GLOBAL STATE (cache)
+        // ==========================================================
+        let products = [];
+        let salesHistory = [];
+        let cashBalance = 0;
+        let cashEntries = [];
+
+        // ==========================================================
+        //  YORDAMCHI FUNKSIYALAR
+        // ==========================================================
+        function formatNumber(n) {
+            return n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ");
+        }
+
+        function getStock(product) {
+            return product.arrived - product.sold;
+        }
+
+        function totalStock() {
+            return products.reduce((sum, p) => sum + getStock(p), 0);
+        }
+
+        function todaySalesSum() {
+            const today = new Date();
+            const dateStr = today.getDate().toString().padStart(2,'0') + '.' + (today.getMonth()+1).toString().padStart(2,'0');
+            return salesHistory.filter(s => s.date === dateStr).reduce((sum, s) => sum + s.total, 0);
+        }
+
+        function monthlyProfit() {
+            const totalSales = salesHistory.reduce((sum, s) => sum + s.total, 0);
+            const totalExpenses = cashEntries.filter(e => e.type === 'chiqim').reduce((sum, e) => sum + e.amount, 0);
+            return totalSales - totalExpenses;
+        }
+
+        // ==========================================================
+        //  API CALLS
+        // ==========================================================
+        async function fetchProducts() {
+            const res = await fetch(`${API_URL}/products`);
+            products = await res.json();
+        }
+
+        async function fetchSales() {
+            const res = await fetch(`${API_URL}/sales`);
+            salesHistory = await res.json();
+        }
+
+        async function fetchCash() {
+            const res = await fetch(`${API_URL}/cash`);
+            const data = await res.json();
+            cashBalance = data.balance || 0;
+            cashEntries = data.entries || [];
+        }
+
+        async function fetchAllData() {
+            await Promise.all([fetchProducts(), fetchSales(), fetchCash()]);
+        }
+
+        // ==========================================================
+        //  RENDER FUNKSIYALAR
+        // ==========================================================
+        function renderDashboard() {
+            document.getElementById('todaySales').innerText = formatNumber(todaySalesSum()) + ' so\'m';
+            document.getElementById('totalStock').innerText = formatNumber(totalStock()) + ' dona';
+            document.getElementById('cashBalance').innerText = formatNumber(cashBalance) + ' so\'m';
+            document.getElementById('monthlyProfit').innerText = formatNumber(monthlyProfit()) + ' so\'m';
+
+            const tbody = document.getElementById('dashboardProductTable');
+            tbody.innerHTML = '';
+            products.forEach(p => {
+                const stock = getStock(p);
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td><strong>${p.name}</strong></td>
+                    <td>${p.arrived}</td>
+                    <td>${p.sold}</td>
+                    <td>${stock}</td>
+                    <td>${formatNumber(p.price)}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function renderWarehouse(filter = '') {
+            const tbody = document.getElementById('warehouseBody');
+            tbody.innerHTML = '';
+            const filtered = products.filter(p => p.name.toLowerCase().includes(filter.toLowerCase()));
+            filtered.forEach(p => {
+                const stock = getStock(p);
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td><strong>${p.name}</strong></td>
+                    <td>${p.arrived}</td>
+                    <td>${p.sold}</td>
+                    <td>${stock}</td>
+                    <td>${formatNumber(p.price)}</td>
+                    <td>
+                        <button class="btn btn-sm btn-outline-primary" onclick="editProduct('${p._id}')"><i class="fas fa-edit"></i></button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function populateProductSelect() {
+            const select = document.getElementById('productSelect');
+            select.innerHTML = '';
+            products.forEach(p => {
+                const opt = document.createElement('option');
+                opt.value = p._id;
+                opt.textContent = `${p.name} (qoldiq: ${getStock(p)})`;
+                select.appendChild(opt);
+            });
+            document.getElementById('productSelect').addEventListener('change', function() {
+                const id = this.value;
+                const p = products.find(pr => pr._id === id);
+                if (p) document.getElementById('salePrice').value = p.price;
+            });
+            if (products.length) {
+                const first = products[0];
+                document.getElementById('salePrice').value = first.price;
+            }
+        }
+
+        function renderSalesHistory() {
+            const tbody = document.getElementById('salesHistoryBody');
+            tbody.innerHTML = '';
+            salesHistory.slice().reverse().forEach(s => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${s.date}</td>
+                    <td>${s.product}</td>
+                    <td>${s.qty}</td>
+                    <td>${formatNumber(s.total)}</td>
+                    <td>${s.buyer || 'Anonim'}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function renderCash() {
+            document.getElementById('cashDisplay').innerText = formatNumber(cashBalance) + ' so\'m';
+            const tbody = document.getElementById('cashHistoryBody');
+            tbody.innerHTML = '';
+            cashEntries.slice().reverse().forEach(e => {
+                const tr = document.createElement('tr');
+                const badge = e.type === 'kirim' ? '<span class="badge bg-success">Kirim</span>' : '<span class="badge bg-danger">Chiqim</span>';
+                tr.innerHTML = `
+                    <td>${e.date}</td>
+                    <td>${badge}</td>
+                    <td>${formatNumber(e.amount)}</td>
+                    <td>${e.note || ''}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        // ==========================================================
+        //  TABLAR
+        // ==========================================================
+        function openTab(tabId) {
+            document.querySelectorAll('.tab-pane').forEach(p => p.style.display = 'none');
+            document.getElementById(tabId).style.display = 'block';
+            document.querySelectorAll('.sidebar .nav-link').forEach(link => link.classList.remove('active'));
+            document.querySelector(`.sidebar .nav-link[data-tab="${tabId}"]`).classList.add('active');
+            if (tabId === 'reports') {
+                setTimeout(initCharts, 100);
+            }
+        }
+
+        document.querySelectorAll('.sidebar .nav-link').forEach(link => {
+            link.addEventListener('click', function(e) {
+                e.preventDefault();
+                const tab = this.dataset.tab;
+                openTab(tab);
+            });
+        });
+
+        // ==========================================================
+        //  OMBOR (ADD / EDIT)
+        // ==========================================================
+        function filterProducts() {
+            const q = document.getElementById('productSearch').value;
+            renderWarehouse(q);
+        }
+
+        async function addProduct() {
+            const name = prompt('Yangi mahsulot nomi:');
+            if (!name) return;
+            const arrived = parseInt(prompt('Kelgan miqdori:'));
+            if (isNaN(arrived)) return;
+            const price = parseInt(prompt('Narxi (so\'m):'));
+            if (isNaN(price)) return;
+
+            try {
+                const res = await fetch(`${API_URL}/products`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name, arrived, price })
+                });
+                if (!res.ok) throw new Error('Server xatosi');
+                await fetchProducts();
+                renderAll();
+                alert('Mahsulot qo\'shildi!');
+            } catch (err) {
+                alert('Xatolik: ' + err.message);
+            }
+        }
+
+        async function editProduct(id) {
+            const p = products.find(pr => pr._id === id);
+            if (!p) return;
+            const newName = prompt('Yangi nom:', p.name);
+            if (!newName) return;
+            const newArrived = parseInt(prompt('Kelgan miqdori:', p.arrived));
+            if (isNaN(newArrived)) return;
+            const newPrice = parseInt(prompt('Narxi:', p.price));
+            if (isNaN(newPrice)) return;
+
+            try {
+                const res = await fetch(`${API_URL}/products/${id}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name: newName, arrived: newArrived, price: newPrice })
+                });
+                if (!res.ok) throw new Error('Server xatosi');
+                await fetchProducts();
+                renderAll();
+                alert('Mahsulot yangilandi!');
+            } catch (err) {
+                alert('Xatolik: ' + err.message);
+            }
+        }
+
+        // ==========================================================
+        //  SOTUV QO'SHISH
+        // ==========================================================
+        async function addSale(e) {
+            e.preventDefault();
+            const productId = document.getElementById('productSelect').value;
+            const qty = parseInt(document.getElementById('saleQuantity').value);
+            const price = parseInt(document.getElementById('salePrice').value);
+            const buyer = document.getElementById('saleBuyer').value.trim() || 'Anonim';
+
+            if (!qty || qty <= 0) {
+                document.getElementById('saleMessage').innerHTML = '<div class="alert alert-danger">Iltimos, to\'g\'ri son kiriting.</div>';
+                return;
+            }
+
+            try {
+                const res = await fetch(`${API_URL}/sales`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ productId, qty, price, buyer })
+                });
+                const data = await res.json();
+                if (!res.ok) {
+                    document.getElementById('saleMessage').innerHTML = `<div class="alert alert-danger">${data.message}</div>`;
+                    return;
+                }
+                await fetchAllData();
+                document.getElementById('saleMessage').innerHTML = `<div class="alert alert-success">✅ Sotuv saqlandi! Xaridor: ${buyer}</div>`;
+                document.getElementById('saleForm').reset();
+                document.getElementById('saleQuantity').value = '';
+                document.getElementById('saleBuyer').value = '';
+                populateProductSelect();
+                renderAll();
+            } catch (err) {
+                alert('Xatolik: ' + err.message);
+            }
+        }
+
+        // ==========================================================
+        //  KASSA (KIRIM / CHIQIM)
+        // ==========================================================
+        async function addCashEntry(type) {
+            const amount = parseInt(prompt(`${type === 'kirim' ? 'Kirim' : 'Chiqim'} summasini kiriting (so'm):`));
+            if (isNaN(amount) || amount <= 0) return;
+            const note = prompt('Izoh (ixtiyoriy):') || '';
+
+            try {
+                const res = await fetch(`${API_URL}/cash`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ type, amount, note })
+                });
+                const data = await res.json();
+                if (!res.ok) {
+                    alert(data.message);
+                    return;
+                }
+                await fetchCash();
+                renderAll();
+            } catch (err) {
+                alert('Xatolik: ' + err.message);
+            }
+        }
+
+        // ==========================================================
+        //  HISOBOT (GRAFIKLAR)
+        // ==========================================================
+        let chartInstances = {};
+
+        async function initCharts() {
+            try {
+                const res = await fetch(`${API_URL}/reports`);
+                const data = await res.json();
+
+                // Daily
+                const ctxDaily = document.getElementById('dailyChart').getContext('2d');
+                if (chartInstances.daily) chartInstances.daily.destroy();
+                chartInstances.daily = new Chart(ctxDaily, {
+                    type: 'bar',
+                    data: {
+                        labels: data.daily.labels,
+                        datasets: [{
+                            label: 'Savdo (so\'m)',
+                            data: data.daily.data,
+                            backgroundColor: 'rgba(37, 99, 235, 0.6)',
+                            borderColor: '#2563EB',
+                            borderWidth: 1
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        plugins: { legend: { display: false } }
+                    }
+                });
+
+                // Monthly
+                const ctxMonthly = document.getElementById('monthlyChart').getContext('2d');
+                if (chartInstances.monthly) chartInstances.monthly.destroy();
+                chartInstances.monthly = new Chart(ctxMonthly, {
+                    type: 'line',
+                    data: {
+                        labels: data.monthly.labels,
+                        datasets: [{
+                            label: 'Oylik savdo',
+                            data: data.monthly.data,
+                            borderColor: '#22C55E',
+                            backgroundColor: 'rgba(34, 197, 94, 0.1)',
+                            fill: true,
+                            tension: 0.3
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        plugins: { legend: { display: false } }
+                    }
+                });
+
+                // Top products
+                const ctxTop = document.getElementById('topProductsChart').getContext('2d');
+                if (chartInstances.top) chartInstances.top.destroy();
+                chartInstances.top = new Chart(ctxTop, {
+                    type: 'doughnut',
+                    data: {
+                        labels: data.topProducts.map(p => p.name),
+                        datasets: [{
+                            data: data.topProducts.map(p => p.sold),
+                            backgroundColor: ['#2563EB', '#22C55E', '#EF4444', '#F59E0B', '#8B5CF6']
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        plugins: { legend: { position: 'bottom' } }
+                    }
+                });
+
+                // Low stock
+                const list = document.getElementById('lowStockList');
+                list.innerHTML = '';
+                if (data.lowStock.length === 0) {
+                    list.innerHTML = '<li class="list-group-item text-muted">Barcha mahsulotlar yetarli.</li>';
+                } else {
+                    data.lowStock.forEach(p => {
+                        const li = document.createElement('li');
+                        li.className = 'list-group-item d-flex justify-content-between align-items-center';
+                        li.innerHTML = `
+                            <span><i class="fas fa-box text-danger me-2"></i>${p.name}</span>
+                            <span class="badge bg-danger rounded-pill">${p.stock} dona</span>
+                        `;
+                        list.appendChild(li);
+                    });
+                }
+            } catch (err) {
+                console.error('Charts error:', err);
+            }
+        }
+
+        // ==========================================================
+        //  RENDER ALL
+        // ==========================================================
+        async function renderAll() {
+            renderDashboard();
+            renderWarehouse(document.getElementById('productSearch')?.value || '');
+            populateProductSelect();
+            renderSalesHistory();
+            renderCash();
+            if (document.getElementById('reports').style.display !== 'none') {
+                setTimeout(initCharts, 100);
+            }
+        }
+
+        // ==========================================================
+        //  BOSHLANG'ICH
+        // ==========================================================
+        document.addEventListener('DOMContentLoaded', async function() {
+            await fetchAllData();
+            renderAll();
+            openTab('dashboard');
+        });
+    </script>
+</body>
+</html>
