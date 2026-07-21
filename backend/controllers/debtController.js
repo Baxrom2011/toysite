@@ -67,7 +67,7 @@ exports.payDebt = async (req, res) => {
             datetime: datetimeStr,
             type: 'kirim',
             amount: amount,
-            note: `Qarz to'lovi: ${debt.product} (mijoz: ${debt.customerId})`
+            note: `Qarz to'lovi: ${debt.product}`
         });
         await cashEntry.save();
 
@@ -128,7 +128,7 @@ exports.getCustomerDebts = async (req, res) => {
 };
 
 // ============================================================
-// 4. QARZNI O'CHIRISH (ADMIN UCHUN)
+// 4. QARZNI O'CHIRISH
 // ============================================================
 exports.deleteDebt = async (req, res) => {
     try {
@@ -150,11 +150,10 @@ exports.deleteDebt = async (req, res) => {
 };
 
 // ============================================================
-// 5. QARZ MA'LUMOTLARINI STATISTIKASI
+// 5. QARZ STATISTIKASI
 // ============================================================
 exports.getDebtStats = async (req, res) => {
     try {
-        // Jami qarzlar
         const totalDebts = await Debt.find();
         const activeDebts = totalDebts.filter(d => d.status === 'active');
         const paidDebts = totalDebts.filter(d => d.status === 'paid');
@@ -202,7 +201,7 @@ exports.getDebtStats = async (req, res) => {
 };
 
 // ============================================================
-// 6. QARZNI QAYTA TIKLASH (TO'LANGAN QARZNI QAYTARISH)
+// 6. QARZNI QAYTA TIKLASH
 // ============================================================
 exports.restoreDebt = async (req, res) => {
     try {
