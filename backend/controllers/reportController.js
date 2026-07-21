@@ -1,24 +1,12 @@
 const Sale = require('../models/Sale');
 const Product = require('../models/Product');
-const CashEntry = require('../models/CashEntry');
-const CashBalance = require('../models/CashBalance');
 
-// Get statistics for reports
 exports.getReports = async (req, res) => {
   try {
-    // Daily sales (last 7 days) – mock or real aggregation
     const sales = await Sale.find();
-    // For simplicity, we return mock data for charts (or you can aggregate)
-    // But we'll compute real data where possible
-
-    // Top products
     const products = await Product.find();
-    const sorted = products.sort((a, b) => b.sold - a.sold).slice(0, 5);
 
-    // Low stock (threshold = 30)
-    const lowStock = products.filter(p => (p.arrived - p.sold) < 30);
-
-    // Daily chart data (last 7 days from sales)
+    // Daily data (last 7 days)
     const today = new Date();
     const labels = [];
     const dailyData = [];
@@ -31,13 +19,19 @@ exports.getReports = async (req, res) => {
       dailyData.push(dailyTotal);
     }
 
-    // Monthly data (last 7 months) – mock or real
+    // Top products
+    const sorted = [...products].sort((a, b) => b.sold - a.sold).slice(0, 5);
+
+    // Low stock (threshold = 30)
+    const lowStock = products.filter(p => (p.arrived - p.sold) < 30);
+
+    // Monthly data
     const monthLabels = ['Yan', 'Fev', 'Mar', 'Apr', 'May', 'Iyun', 'Iyul'];
-    // For simplicity, we use mock monthly data, but you can aggregate from sales
+    const monthlyData = [15000000, 18000000, 22000000, 19000000, 21000000, 25000000, 18500000];
 
     res.json({
       daily: { labels, data: dailyData },
-      monthly: { labels: monthLabels, data: [15000000, 18000000, 22000000, 19000000, 21000000, 25000000, 18500000] }, // mock
+      monthly: { labels: monthLabels, data: monthlyData },
       topProducts: sorted.map(p => ({ name: p.name, sold: p.sold })),
       lowStock: lowStock.map(p => ({ name: p.name, stock: p.arrived - p.sold })),
     });

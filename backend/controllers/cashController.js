@@ -1,7 +1,6 @@
 const CashEntry = require('../models/CashEntry');
 const CashBalance = require('../models/CashBalance');
 
-// GET cash balance and entries
 exports.getCashData = async (req, res) => {
   try {
     const balance = await CashBalance.findOne();
@@ -12,13 +11,13 @@ exports.getCashData = async (req, res) => {
   }
 };
 
-// POST new cash entry (kirim/chiqim)
 exports.addCashEntry = async (req, res) => {
   try {
     const { type, amount, note } = req.body;
     if (!['kirim', 'chiqim'].includes(type)) {
       return res.status(400).json({ message: 'Type must be kirim or chiqim' });
     }
+    
     const now = new Date();
     const dateStr = now.getDate().toString().padStart(2,'0') + '.' + (now.getMonth()+1).toString().padStart(2,'0');
 
@@ -29,6 +28,7 @@ exports.addCashEntry = async (req, res) => {
     if (!balance) {
       balance = new CashBalance({ balance: 0 });
     }
+    
     if (type === 'kirim') {
       balance.balance += amount;
     } else {

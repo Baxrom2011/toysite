@@ -3,7 +3,6 @@ const Product = require('../models/Product');
 const CashEntry = require('../models/CashEntry');
 const CashBalance = require('../models/CashBalance');
 
-// GET all sales
 exports.getSales = async (req, res) => {
   try {
     const sales = await Sale.find().sort({ createdAt: -1 });
@@ -13,7 +12,6 @@ exports.getSales = async (req, res) => {
   }
 };
 
-// POST new sale
 exports.addSale = async (req, res) => {
   try {
     const { productId, qty, price, buyer } = req.body;
@@ -26,13 +24,12 @@ exports.addSale = async (req, res) => {
     }
 
     const total = qty * price;
-    // Update product
     product.sold += qty;
     await product.save();
 
-    // Create sale
     const now = new Date();
     const dateStr = now.getDate().toString().padStart(2,'0') + '.' + (now.getMonth()+1).toString().padStart(2,'0');
+    
     const sale = new Sale({
       product: product.name,
       qty,
@@ -42,7 +39,6 @@ exports.addSale = async (req, res) => {
     });
     await sale.save();
 
-    // Add cash entry
     const cashEntry = new CashEntry({
       date: dateStr,
       type: 'kirim',
@@ -51,7 +47,6 @@ exports.addSale = async (req, res) => {
     });
     await cashEntry.save();
 
-    // Update cash balance
     let cashBalance = await CashBalance.findOne();
     if (!cashBalance) {
       cashBalance = new CashBalance({ balance: 0 });

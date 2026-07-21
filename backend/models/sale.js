@@ -5,7 +5,7 @@ const saleSchema = new mongoose.Schema({
   qty: { type: Number, required: true },
   total: { type: Number, required: true },
   buyer: { type: String, default: 'Anonim' },
-  date: { type: String, required: true }, // format: DD.MM
+  date: { type: String, required: true },
 }, { timestamps: true });
 
 module.exports = mongoose.model('Sale', saleSchema);

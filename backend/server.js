@@ -10,15 +10,15 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// API routes
+// Routes
 app.use('/api/products', require('./routes/products'));
 app.use('/api/sales', require('./routes/sales'));
 app.use('/api/cash', require('./routes/cash'));
 app.use('/api/reports', require('./routes/reports'));
 
-// ✅ Root route (health check uchun)
+// Root route
 app.get('/', (req, res) => {
-  res.json({ 
+  res.json({
     message: 'Toys Store API is running!',
     endpoints: {
       products: '/api/products',
@@ -29,7 +29,7 @@ app.get('/', (req, res) => {
   });
 });
 
-// ✅ 404 handler
+// 404 handler
 app.use((req, res) => {
   res.status(404).json({ message: 'Route not found' });
 });

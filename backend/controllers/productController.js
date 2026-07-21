@@ -1,6 +1,5 @@
 const Product = require('../models/Product');
 
-// GET all products
 exports.getProducts = async (req, res) => {
   try {
     const products = await Product.find();
@@ -10,7 +9,6 @@ exports.getProducts = async (req, res) => {
   }
 };
 
-// POST new product
 exports.addProduct = async (req, res) => {
   try {
     const { name, arrived, price } = req.body;
@@ -22,7 +20,6 @@ exports.addProduct = async (req, res) => {
   }
 };
 
-// PUT update product
 exports.updateProduct = async (req, res) => {
   try {
     const { id } = req.params;
