@@ -1,10 +1,53 @@
-const express = require('express');
-const router = express.Router();
-const { getDebts, payDebt, getCustomerDebts, deleteDebt } = require('../controllers/debtController');
+const mongoose = require('mongoose');
 
-router.get('/', getDebts);
-router.get('/customer/:customerId', getCustomerDebts);
-router.post('/:id/pay', payDebt);
-router.delete('/:id', deleteDebt);
+const debtSchema = new mongoose.Schema({
+    customerId: { 
+        type: mongoose.Schema.Types.ObjectId, 
+        ref: 'Customer', 
+        required: true 
+    },
+    saleId: { 
+        type: mongoose.Schema.Types.ObjectId, 
+        ref: 'Sale' 
+    },
+    product: { 
+        type: String, 
+        required: true 
+    },
+    total: { 
+        type: Number, 
+        required: true,
+        min: 0
+    },
+    paid: { 
+        type: Number, 
+        default: 0,
+        min: 0
+    },
+    remaining: { 
+        type: Number, 
+        required: true,
+        min: 0
+    },
+    status: { 
+        type: String, 
+        enum: ['active', 'paid'], 
+        default: 'active' 
+    },
+    date: { 
+        type: String, 
+        required: true 
+    },
+    time: { 
+        type: String, 
+        default: '' 
+    },
+    datetime: { 
+        type: String, 
+        default: '' 
+    },
+}, { 
+    timestamps: true 
+});
 
-module.exports = router;
+module.exports = mongoose.model('Debt', debtSchema);
