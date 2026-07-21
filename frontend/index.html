@@ -422,9 +422,13 @@
     </div>
 
     <script>
-        // API URL - o'zgartiring!
-        const API_URL = 'https://toysite.onrender.com/api';
-        // Local uchun: const API_URL = 'http://localhost:5000/api';
+    // ✅ PRODUCTION (Render)
+const API_URL = 'https://toysite.onrender.com/api';
+
+// Agar frontend ham Renderda bo'lsa, avtomatik aniqlash:
+const API_URL = window.location.hostname === 'localhost' 
+    ? 'http://localhost:5000/api' 
+    : 'https://toysite.onrender.com/api';
 
         let products = [];
         let salesHistory = [];
