@@ -15,7 +15,11 @@ exports.getSales = async (req, res) => {
 
 exports.addSale = async (req, res) => {
     try {
-        const { customerId, productId, qty, price, total, paymentType, paymentAmount, debtAmount } = req.body;
+        const { 
+            customerId, productId, qty, price, total, 
+            paymentType, paymentAmount, debtAmount,
+            date, time, datetime  // 🆕 QO'SHILD
+        } = req.body;
         
         const product = await Product.findById(productId);
         if (!product) return res.status(404).json({ message: 'Product not found' });
@@ -25,16 +29,15 @@ exports.addSale = async (req, res) => {
             return res.status(400).json({ message: `Yetarli mahsulot yo'q (qoldiq: ${stock})` });
         }
 
-        // 🆕 Qoldiqni hisoblash
         const remainingStock = stock - qty;
-
         product.sold += qty;
         await product.save();
 
+        // 🆕 Sana va vaqtni ishlatish (agar kelmasa hozirgi vaqt)
         const now = new Date();
-        const dateStr = now.getDate().toString().padStart(2,'0') + '.' + (now.getMonth()+1).toString().padStart(2,'0');
-        const timeStr = now.getHours().toString().padStart(2,'0') + ':' + now.getMinutes().toString().padStart(2,'0');
-        const datetimeStr = dateStr + ' ' + timeStr;
+        const dateStr = date || (now.getDate().toString().padStart(2,'0') + '.' + (now.getMonth()+1).toString().padStart(2,'0'));
+        const timeStr = time || (now.getHours().toString().padStart(2,'0') + ':' + now.getMinutes().toString().padStart(2,'0'));
+        const datetimeStr = datetime || (dateStr + ' ' + timeStr);
         
         // Sotuvni saqlash
         const sale = new Sale({
@@ -45,8 +48,8 @@ exports.addSale = async (req, res) => {
             total,
             paymentType: paymentType || 'cash',
             date: dateStr,
-            time: timeStr,           // 🆕
-            datetime: datetimeStr,   // 🆕
+            time: timeStr,
+            datetime: datetimeStr,
         });
         await sale.save();
 
@@ -79,8 +82,8 @@ exports.addSale = async (req, res) => {
                 remaining: debtAmount,
                 status: 'active',
                 date: dateStr,
-                time: timeStr,           // 🆕
-                datetime: datetimeStr,   // 🆕
+                time: timeStr,
+                datetime: datetimeStr,
             });
             await debt.save();
         }
@@ -88,7 +91,7 @@ exports.addSale = async (req, res) => {
         res.status(201).json({ 
             sale, 
             product,
-            remainingStock: remainingStock  // 🆕 Qoldiq
+            remainingStock: remainingStock
         });
     } catch (error) {
         res.status(400).json({ message: error.message });
