@@ -14,13 +14,13 @@ router.get('/', getSales);
 // Yangi sotuv qo'shish
 router.post('/', addSale);
 
-// 🆕 Mijoz bo'yicha sotuvlar
+// 🆕 Mijoz bo'yicha sotuvlar (sana filtri bilan)
 router.get('/customer/:customerId', getSalesByCustomer);
 
 // 🆕 Mijoz bo'yicha kassa
 router.get('/customer/:customerId/cash', getCustomerCash);
 
-// 🆕 Mijoz bo'yicha qarz
+// 🆕 Mijoz bo'yicha qarz (barcha sanalardan)
 router.get('/customer/:customerId/debt', getCustomerDebtSummary);
 
 module.exports = router;
