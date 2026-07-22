@@ -17,13 +17,12 @@ exports.getSales = async (req, res) => {
 };
 
 // ============================================================
-// YANGI SOTUV QO'SHISH
+// YANGI SOTUV QO'SHISH (FAQAT SOTUV - NARXI VA SONI)
 // ============================================================
 exports.addSale = async (req, res) => {
     try {
         const { 
-            customerId, productId, qty, price, total, 
-            paymentType, paymentAmount, debtAmount,
+            customerId, productId, qty, price, total,
             date, time, datetime
         } = req.body;
         
@@ -48,74 +47,18 @@ exports.addSale = async (req, res) => {
         const timeStr = time || (now.getHours().toString().padStart(2,'0') + ':' + now.getMinutes().toString().padStart(2,'0'));
         const datetimeStr = datetime || (dateStr + ' ' + timeStr);
         
-        // Sotuvni saqlash
+        // Sotuvni saqlash (faqat sotuv, naqd/qarz YO'Q)
         const sale = new Sale({
             customerId: customerId || null,
             product: product.name,
             productId: product._id,
             qty,
             total,
-            paymentType: paymentType || 'cash',
             date: dateStr,
             time: timeStr,
             datetime: datetimeStr,
         });
         await sale.save();
-
-        // ============================================================
-        // NAQD TO'LOV - KASSAGA QO'SHISH
-        // ============================================================
-        if (paymentType === 'cash' || (paymentType === 'debt' && paymentAmount > 0)) {
-            const cashAmount = paymentType === 'cash' ? total : paymentAmount;
-            
-            const cashEntry = new CashEntry({
-                date: dateStr,
-                time: timeStr,
-                datetime: datetimeStr,
-                type: 'kirim',
-                amount: cashAmount,
-                note: `Sotuv ${product.name} (${paymentType === 'cash' ? 'naqd' : 'qisman to\'lov'})`
-            });
-            await cashEntry.save();
-
-            let balance = await CashBalance.findOne();
-            if (!balance) {
-                balance = new CashBalance({ balance: 0 });
-            }
-            balance.balance += cashAmount;
-            await balance.save();
-        }
-
-        // ============================================================
-        // QARZ - QOLGAN SUMMA QARZGA YOZILADI
-        // ============================================================
-        if (paymentType === 'debt' && debtAmount > 0) {
-            // Avval mijozning eski qarzini tekshiramiz
-            const existingDebts = await Debt.find({ 
-                customerId: customerId,
-                status: 'active'
-            });
-            
-            // Eski qarz qoldig'i
-            const oldDebtTotal = existingDebts.reduce((sum, d) => sum + d.remaining, 0);
-            
-            // Yangi qarz yaratamiz
-            const debt = new Debt({
-                customerId: customerId,
-                saleId: sale._id,
-                product: product.name,
-                total: debtAmount,
-                paid: 0,
-                remaining: debtAmount,
-                status: 'active',
-                date: dateStr,
-                time: timeStr,
-                datetime: datetimeStr,
-                isNewDebt: true,
-                oldDebtBefore: oldDebtTotal
-            });
-            await debt.save();
-        }
 
         res.status(201).json({ 
             success: true,
@@ -137,7 +80,7 @@ exports.addSale = async (req, res) => {
 };
 
 // ============================================================
-// 🆕 MIJOZ BO'YICHA SOTUVLARNI OLISH (SANA FILTR BILAN)
+// MIJOZ BO'YICHA SOTUVLARNI OLISH (SANA FILTR BILAN)
 // ============================================================
 exports.getSalesByCustomer = async (req, res) => {
     try {
@@ -152,22 +95,18 @@ exports.getSalesByCustomer = async (req, res) => {
         const sales = await Sale.find(filter).sort({ createdAt: -1 });
         const total = sales.reduce((sum, s) => sum + s.total, 0);
         
-        // Naqd to'lovlar (kassa)
-        const cashSales = sales.filter(s => s.paymentType === 'cash');
-        const totalCash = cashSales.reduce((sum, s) => sum + s.total, 0);
-        
-        // Qarz sotuvlar
-        const debtSales = sales.filter(s => s.paymentType === 'debt');
-        const totalDebt = debtSales.reduce((sum, s) => sum + s.total, 0);
-        
-        // Topgan pul = barcha sotuvlar (naqd + qarz)
-        const totalEarned = total;
-        
-        // Kassa = naqd to'lovlar
-        const totalCashReceived = totalCash;
+        // Shu kungi kassa (CashEntry dan olamiz)
+        let cashFilter = { 
+            type: 'kirim'
+        };
+        if (date) {
+            cashFilter.date = date;
+        }
+        const cashEntries = await CashEntry.find(cashFilter);
+        const totalCash = cashEntries.reduce((sum, c) => sum + c.amount, 0);
         
         // Qarz = topgan pul - kassa
-        const calculatedDebt = totalEarned - totalCashReceived;
+        const calculatedDebt = total - totalCash;
         
         // Mijozning jami qarzi (barcha sanalardan)
         const allDebts = await Debt.find({ 
@@ -183,18 +122,13 @@ exports.getSalesByCustomer = async (req, res) => {
             total: total,
             count: sales.length,
             cash: {
-                count: cashSales.length,
                 total: totalCash
             },
-            debt: {
-                count: debtSales.length,
-                total: totalDebt
-            },
             summary: {
-                totalEarned: totalEarned,        // Topgan pul
-                totalCashReceived: totalCashReceived, // Kassa
-                calculatedDebt: calculatedDebt,   // Qarz
-                totalDebtAll: totalDebtAll        // Jami qarz
+                totalEarned: total,              // Topgan pul
+                totalCashReceived: totalCash,    // Kassa
+                calculatedDebt: calculatedDebt,  // Qarz (topgan - kassa)
+                totalDebtAll: totalDebtAll       // Jami qarz (barcha sanalar)
             }
         });
     } catch (error) {
@@ -203,33 +137,240 @@ exports.getSalesByCustomer = async (req, res) => {
 };
 
 // ============================================================
-// 🆕 MIJOZ BO'YICHA KASSA MA'LUMOTI
+// KASSA KIRITISH (SHU KUN UCHUN)
+// ============================================================
+exports.addCashForCustomer = async (req, res) => {
+    try {
+        const { customerId } = req.params;
+        const { amount, date, note } = req.body;
+        
+        if (!amount || amount <= 0) {
+            return res.status(400).json({ message: 'Kassa miqdori kiritilishi shart' });
+        }
+        
+        const now = new Date();
+        const dateStr = date || (now.getDate().toString().padStart(2,'0') + '.' + (now.getMonth()+1).toString().padStart(2,'0'));
+        const timeStr = now.getHours().toString().padStart(2,'0') + ':' + now.getMinutes().toString().padStart(2,'0');
+        const datetimeStr = dateStr + ' ' + timeStr;
+        
+        // 1. Kassaga qo'shish
+        const cashEntry = new CashEntry({
+            date: dateStr,
+            time: timeStr,
+            datetime: datetimeStr,
+            type: 'kirim',
+            amount: amount,
+            note: note || `${customerId} uchun kassa`
+        });
+        await cashEntry.save();
+        
+        // 2. Kassa balansini yangilash
+        let balance = await CashBalance.findOne();
+        if (!balance) {
+            balance = new CashBalance({ balance: 0 });
+        }
+        balance.balance += amount;
+        await balance.save();
+        
+        // 3. Shu kungi sotuvlarni olish
+        const sales = await Sale.find({ 
+            customerId: customerId,
+            date: dateStr
+        });
+        const totalEarned = sales.reduce((sum, s) => sum + s.total, 0);
+        
+        // 4. Shu kungi kassa (yangisi bilan)
+        const cashEntries = await CashEntry.find({ 
+            date: dateStr,
+            type: 'kirim'
+        });
+        const totalCash = cashEntries.reduce((sum, c) => sum + c.amount, 0);
+        
+        // 5. Qarz = topgan pul - kassa
+        const calculatedDebt = totalEarned - totalCash;
+        
+        // 6. Agar qarz bo'lsa, Debt ga yozish
+        if (calculatedDebt > 0) {
+            // Avval eski qarzni tekshiramiz
+            const existingDebt = await Debt.findOne({ 
+                customerId: customerId,
+                date: dateStr,
+                status: 'active'
+            });
+            
+            if (existingDebt) {
+                // Eski qarzni yangilaymiz
+                existingDebt.total = calculatedDebt;
+                existingDebt.remaining = calculatedDebt - existingDebt.paid;
+                if (existingDebt.remaining <= 0) {
+                    existingDebt.status = 'paid';
+                }
+                await existingDebt.save();
+            } else {
+                // Yangi qarz yaratamiz
+                const debt = new Debt({
+                    customerId: customerId,
+                    product: 'Umumiy qarz',
+                    total: calculatedDebt,
+                    paid: 0,
+                    remaining: calculatedDebt,
+                    status: 'active',
+                    date: dateStr,
+                    time: timeStr,
+                    datetime: datetimeStr,
+                    note: `Kassa ${formatNumber(totalCash)} so'm, Topgan ${formatNumber(totalEarned)} so'm`
+                });
+                await debt.save();
+            }
+        } else {
+            // Qarz yo'q, agar mavjud bo'lsa o'chiramiz
+            await Debt.deleteMany({ 
+                customerId: customerId,
+                date: dateStr,
+                status: 'active'
+            });
+        }
+        
+        res.json({
+            success: true,
+            message: 'Kassa kiritildi',
+            cashEntry: cashEntry,
+            totalEarned: totalEarned,
+            totalCash: totalCash,
+            calculatedDebt: calculatedDebt,
+            balance: balance.balance
+        });
+        
+    } catch (error) {
+        res.status(400).json({ message: error.message });
+    }
+};
+
+// ============================================================
+// QARZNI TO'LASH (TO'LOV QILISH)
+// ============================================================
+exports.payCustomerDebt = async (req, res) => {
+    try {
+        const { customerId } = req.params;
+        const { amount, date, note } = req.body;
+        
+        if (!amount || amount <= 0) {
+            return res.status(400).json({ message: 'To\'lov miqdori kiritilishi shart' });
+        }
+        
+        const now = new Date();
+        const dateStr = date || (now.getDate().toString().padStart(2,'0') + '.' + (now.getMonth()+1).toString().padStart(2,'0'));
+        const timeStr = now.getHours().toString().padStart(2,'0') + ':' + now.getMinutes().toString().padStart(2,'0');
+        const datetimeStr = dateStr + ' ' + timeStr;
+        
+        // 1. Kassaga qo'shish
+        const cashEntry = new CashEntry({
+            date: dateStr,
+            time: timeStr,
+            datetime: datetimeStr,
+            type: 'kirim',
+            amount: amount,
+            note: note || `Qarz to'lovi (${customerId})`
+        });
+        await cashEntry.save();
+        
+        // 2. Kassa balansini yangilash
+        let balance = await CashBalance.findOne();
+        if (!balance) {
+            balance = new CashBalance({ balance: 0 });
+        }
+        balance.balance += amount;
+        await balance.save();
+        
+        // 3. Mijozning qarzini kamaytirish (eng eski qarzdan boshlab)
+        const debts = await Debt.find({ 
+            customerId: customerId,
+            status: 'active'
+        }).sort({ createdAt: 1 });
+        
+        let remainingAmount = amount;
+        let paidDebts = [];
+        
+        for (let debt of debts) {
+            if (remainingAmount <= 0) break;
+            
+            if (debt.remaining <= remainingAmount) {
+                // Qarzni to'liq to'lash
+                remainingAmount -= debt.remaining;
+                debt.paid += debt.remaining;
+                debt.remaining = 0;
+                debt.status = 'paid';
+                await debt.save();
+                paidDebts.push({
+                    id: debt._id,
+                    date: debt.date,
+                    amount: debt.total,
+                    paid: debt.paid,
+                    remaining: 0,
+                    status: 'paid'
+                });
+            } else {
+                // Qarzni qisman to'lash
+                debt.paid += remainingAmount;
+                debt.remaining -= remainingAmount;
+                await debt.save();
+                paidDebts.push({
+                    id: debt._id,
+                    date: debt.date,
+                    amount: debt.total,
+                    paid: debt.paid,
+                    remaining: debt.remaining,
+                    status: 'active'
+                });
+                remainingAmount = 0;
+            }
+        }
+        
+        res.json({
+            success: true,
+            message: 'To\'lov amalga oshirildi',
+            payment: {
+                amount: amount,
+                date: dateStr,
+                time: timeStr,
+                datetime: datetimeStr
+            },
+            cashEntry: cashEntry,
+            paidDebts: paidDebts,
+            remainingAmount: remainingAmount,
+            balance: balance.balance
+        });
+        
+    } catch (error) {
+        res.status(400).json({ message: error.message });
+    }
+};
+
+// ============================================================
+// MIJOZ BO'YICHA KASSA MA'LUMOTI
 // ============================================================
 exports.getCustomerCash = async (req, res) => {
     try {
         const { customerId } = req.params;
         const { date } = req.query;
         
-        let filter = { 
-            customerId: customerId,
-            paymentType: 'cash'
-        };
+        let filter = { type: 'kirim' };
         if (date) {
             filter.date = date;
         }
         
-        const sales = await Sale.find(filter);
-        const totalCash = sales.reduce((sum, s) => sum + s.total, 0);
+        const cashEntries = await CashEntry.find(filter);
+        const totalCash = cashEntries.reduce((sum, c) => sum + c.amount, 0);
         
-        // Shu kun uchun topgan pul (barcha sotuvlar)
-        let earnFilter = { customerId: customerId };
+        // Shu kungi sotuvlar
+        let salesFilter = { customerId: customerId };
         if (date) {
-            earnFilter.date = date;
+            salesFilter.date = date;
         }
-        const allSales = await Sale.find(earnFilter);
-        const totalEarned = allSales.reduce((sum, s) => sum + s.total, 0);
+        const sales = await Sale.find(salesFilter);
+        const totalEarned = sales.reduce((sum, s) => sum + s.total, 0);
         
-        // Qarz = topgan pul - kassa
+        // Qarz = topgan - kassa
         const debt = totalEarned - totalCash;
         
         res.json({
@@ -238,8 +379,8 @@ exports.getCustomerCash = async (req, res) => {
             totalCash: totalCash,
             totalEarned: totalEarned,
             debt: debt,
-            count: sales.length,
-            sales: sales
+            count: cashEntries.length,
+            entries: cashEntries
         });
     } catch (error) {
         res.status(500).json({ message: error.message });
@@ -247,13 +388,12 @@ exports.getCustomerCash = async (req, res) => {
 };
 
 // ============================================================
-// 🆕 MIJOZ BO'YICHA QARZ MA'LUMOTI (BARCHA SANALARDAN)
+// MIJOZ BO'YICHA QARZ MA'LUMOTI (BARCHA SANALARDAN)
 // ============================================================
 exports.getCustomerDebtSummary = async (req, res) => {
     try {
         const { customerId } = req.params;
         
-        // Barcha faol qarzlar (barcha sanalardan)
         const debts = await Debt.find({ 
             customerId: customerId,
             status: 'active'
@@ -261,7 +401,7 @@ exports.getCustomerDebtSummary = async (req, res) => {
         
         const totalDebt = debts.reduce((sum, d) => sum + d.remaining, 0);
         
-        // Har bir sana bo'yicha qarz
+        // Har bir sana bo'yicha
         const debtsByDate = {};
         debts.forEach(d => {
             if (!debtsByDate[d.date]) {
@@ -285,101 +425,5 @@ exports.getCustomerDebtSummary = async (req, res) => {
         });
     } catch (error) {
         res.status(500).json({ message: error.message });
-    }
-};
-
-// ============================================================
-// 🆕 KASSA QILISH (TO'LOV QILISH)
-// ============================================================
-exports.makeCashPayment = async (req, res) => {
-    try {
-        const { customerId } = req.params;
-        const { amount, date, note } = req.body;
-        
-        if (!amount || amount <= 0) {
-            return res.status(400).json({ message: 'To\'lov miqdori kiritilishi shart' });
-        }
-        
-        const now = new Date();
-        const dateStr = date || (now.getDate().toString().padStart(2,'0') + '.' + (now.getMonth()+1).toString().padStart(2,'0'));
-        const timeStr = now.getHours().toString().padStart(2,'0') + ':' + now.getMinutes().toString().padStart(2,'0');
-        const datetimeStr = dateStr + ' ' + timeStr;
-        
-        // 1. Kassaga qo'shish
-        const cashEntry = new CashEntry({
-            date: dateStr,
-            time: timeStr,
-            datetime: datetimeStr,
-            type: 'kirim',
-            amount: amount,
-            note: note || `Mijoz to'lovi`
-        });
-        await cashEntry.save();
-        
-        let balance = await CashBalance.findOne();
-        if (!balance) {
-            balance = new CashBalance({ balance: 0 });
-        }
-        balance.balance += amount;
-        await balance.save();
-        
-        // 2. Mijozning qarzini kamaytirish
-        const debts = await Debt.find({ 
-            customerId: customerId,
-            status: 'active'
-        }).sort({ createdAt: 1 });
-        
-        let remainingAmount = amount;
-        let paidDebts = [];
-        
-        for (let debt of debts) {
-            if (remainingAmount <= 0) break;
-            
-            if (debt.remaining <= remainingAmount) {
-                // Qarzni to'liq to'lash
-                remainingAmount -= debt.remaining;
-                debt.paid += debt.remaining;
-                debt.remaining = 0;
-                debt.status = 'paid';
-                await debt.save();
-                paidDebts.push({
-                    id: debt._id,
-                    amount: debt.total,
-                    paid: debt.paid,
-                    remaining: 0,
-                    status: 'paid'
-                });
-            } else {
-                // Qarzni qisman to'lash
-                debt.paid += remainingAmount;
-                debt.remaining -= remainingAmount;
-                await debt.save();
-                paidDebts.push({
-                    id: debt._id,
-                    amount: debt.total,
-                    paid: debt.paid,
-                    remaining: debt.remaining,
-                    status: 'active'
-                });
-                remainingAmount = 0;
-            }
-        }
-        
-        res.json({
-            success: true,
-            message: 'To\'lov amalga oshirildi',
-            payment: {
-                amount: amount,
-                date: dateStr,
-                time: timeStr,
-                datetime: datetimeStr
-            },
-            cashEntry: cashEntry,
-            paidDebts: paidDebts,
-            remainingDebt: remainingAmount
-        });
-        
-    } catch (error) {
-        res.status(400).json({ message: error.message });
     }
 };
