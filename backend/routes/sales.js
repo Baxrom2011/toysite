@@ -6,7 +6,8 @@ const {
     getSalesByCustomer,
     getCustomerCash,
     getCustomerDebtSummary,
-    makeCashPayment
+    addCashForCustomer,
+    payCustomerDebt
 } = require('../controllers/saleController');
 
 // Barcha sotuvlar
@@ -24,7 +25,10 @@ router.get('/customer/:customerId/cash', getCustomerCash);
 // Mijoz bo'yicha qarz (barcha sanalardan)
 router.get('/customer/:customerId/debt', getCustomerDebtSummary);
 
-// 🆕 Kassa to'lovi (qarzni to'lash)
-router.post('/customer/:customerId/pay', makeCashPayment);
+// 🆕 Kassa kiritish
+router.post('/customer/:customerId/cash', addCashForCustomer);
+
+// 🆕 Qarzni to'lash
+router.post('/customer/:customerId/pay', payCustomerDebt);
 
 module.exports = router;
