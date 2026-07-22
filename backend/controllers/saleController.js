@@ -27,13 +27,11 @@ exports.addSale = async (req, res) => {
             date, time, datetime
         } = req.body;
         
-        // Mahsulotni tekshirish
         const product = await Product.findById(productId);
         if (!product) {
             return res.status(404).json({ message: 'Mahsulot topilmadi' });
         }
 
-        // Qoldiqni tekshirish
         const stock = product.arrived - product.sold;
         if (qty > stock) {
             return res.status(400).json({ 
@@ -41,20 +39,15 @@ exports.addSale = async (req, res) => {
             });
         }
 
-        // Qoldiqni hisoblash
         const remainingStock = stock - qty;
-        
-        // Mahsulotni yangilash
         product.sold += qty;
         await product.save();
 
-        // Sana va vaqt
         const now = new Date();
         const dateStr = date || (now.getDate().toString().padStart(2,'0') + '.' + (now.getMonth()+1).toString().padStart(2,'0'));
         const timeStr = time || (now.getHours().toString().padStart(2,'0') + ':' + now.getMinutes().toString().padStart(2,'0'));
         const datetimeStr = datetime || (dateStr + ' ' + timeStr);
         
-        // Sotuvni saqlash
         const sale = new Sale({
             customerId: customerId || null,
             product: product.name,
@@ -68,9 +61,7 @@ exports.addSale = async (req, res) => {
         });
         await sale.save();
 
-        // ============================================================
-        // NAQD TO'LOV
-        // ============================================================
+        // Naqd to'lov
         if (paymentType === 'cash' || (paymentType === 'debt' && paymentAmount > 0)) {
             const cashAmount = paymentType === 'cash' ? total : paymentAmount;
             
@@ -92,9 +83,7 @@ exports.addSale = async (req, res) => {
             await balance.save();
         }
 
-        // ============================================================
-        // QARZ
-        // ============================================================
+        // Qarz
         if (paymentType === 'debt' && debtAmount > 0) {
             const debt = new Debt({
                 customerId: customerId,
@@ -111,14 +100,10 @@ exports.addSale = async (req, res) => {
             await debt.save();
         }
 
-        // ============================================================
-        // JAVOB
-        // ============================================================
         res.status(201).json({ 
             success: true,
             message: 'Sotuv saqlandi',
             sale: sale,
-            product: product,
             remainingStock: remainingStock,
             date: dateStr,
             time: timeStr,
@@ -135,7 +120,7 @@ exports.addSale = async (req, res) => {
 };
 
 // ============================================================
-// MIJOZ BO'YICHA SOTUVLARNI OLISH (🆕 YANGI)
+// 🆕 MIJOZ BO'YICHA SOTUVLARNI OLISH (SANA FILTR BILAN)
 // ============================================================
 exports.getSalesByCustomer = async (req, res) => {
     try {
@@ -150,12 +135,28 @@ exports.getSalesByCustomer = async (req, res) => {
         const sales = await Sale.find(filter).sort({ createdAt: -1 });
         const total = sales.reduce((sum, s) => sum + s.total, 0);
         
+        // Naqd to'lovlar
+        const cashSales = sales.filter(s => s.paymentType === 'cash');
+        const totalCash = cashSales.reduce((sum, s) => sum + s.total, 0);
+        
+        // Qarz sotuvlar
+        const debtSales = sales.filter(s => s.paymentType === 'debt');
+        const totalDebt = debtSales.reduce((sum, s) => sum + s.total, 0);
+        
         res.json({
             customerId: customerId,
             date: date || 'all',
             sales: sales,
             total: total,
-            count: sales.length
+            count: sales.length,
+            cash: {
+                count: cashSales.length,
+                total: totalCash
+            },
+            debt: {
+                count: debtSales.length,
+                total: totalDebt
+            }
         });
     } catch (error) {
         res.status(500).json({ message: error.message });
@@ -163,7 +164,7 @@ exports.getSalesByCustomer = async (req, res) => {
 };
 
 // ============================================================
-// MIJOZ BO'YICHA KASSA MA'LUMOTI (🆕 YANGI)
+// 🆕 MIJOZ BO'YICHA KASSA MA'LUMOTI
 // ============================================================
 exports.getCustomerCash = async (req, res) => {
     try {
@@ -185,7 +186,8 @@ exports.getCustomerCash = async (req, res) => {
             customerId: customerId,
             date: date || 'all',
             totalCash: totalCash,
-            count: sales.length
+            count: sales.length,
+            sales: sales
         });
     } catch (error) {
         res.status(500).json({ message: error.message });
@@ -193,24 +195,41 @@ exports.getCustomerCash = async (req, res) => {
 };
 
 // ============================================================
-// MIJOZ BO'YICHA QARZ MA'LUMOTI (🆕 YANGI)
+// 🆕 MIJOZ BO'YICHA QARZ MA'LUMOTI (BARCHA SANALARDAN)
 // ============================================================
 exports.getCustomerDebtSummary = async (req, res) => {
     try {
         const { customerId } = req.params;
         
+        // Barcha faol qarzlar (barcha sanalardan)
         const debts = await Debt.find({ 
             customerId: customerId,
             status: 'active'
-        });
+        }).sort({ createdAt: -1 });
         
         const totalDebt = debts.reduce((sum, d) => sum + d.remaining, 0);
+        
+        // Har bir sana bo'yicha qarz
+        const debtsByDate = {};
+        debts.forEach(d => {
+            if (!debtsByDate[d.date]) {
+                debtsByDate[d.date] = {
+                    total: 0,
+                    count: 0,
+                    debts: []
+                };
+            }
+            debtsByDate[d.date].total += d.remaining;
+            debtsByDate[d.date].count += 1;
+            debtsByDate[d.date].debts.push(d);
+        });
         
         res.json({
             customerId: customerId,
             totalDebt: totalDebt,
+            count: debts.length,
             debts: debts,
-            count: debts.length
+            byDate: debtsByDate
         });
     } catch (error) {
         res.status(500).json({ message: error.message });
